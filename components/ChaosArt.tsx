@@ -8,7 +8,6 @@ class ChaosArt {
     private pointsHistory: Array<[number, number]> = [];
     private maxAge: number = 200;
     private fadeStep: number = 1.0 / this.maxAge;
-    public pointColors: Float32Array;
     private t: number = -3.0;
     private t_end: number = 3.0;
     private t_increment_base: number = 0.005;
@@ -18,6 +17,11 @@ class ChaosArt {
     private timestepAdjustment: number = this.rolling_delta / this.iterationsPerFrame;
     private maxX: number = 1000000000;
     private maxY: number = 1000000000;
+
+
+    public pointColors: Float32Array;
+    public currentTime: number = this.t;
+
 
     constructor() {
         this.params = new Float32Array(18);
@@ -55,16 +59,16 @@ class ChaosArt {
 
     public computeNextPoints(): Array<[number, number]> {
         let allPoints: Array<[number, number]> = [];
-        let tempT = this.t;
+        this.currentTime = this.t;
 
         for (let iteration = 0; iteration < this.iterationsPerFrame; iteration++) {
             let chaosPoints: Array<[number, number]> = [];
 
-            let x = this.scalePoint(tempT);
-            let y = this.scalePoint(tempT);
+            let x = this.scalePoint(this.currentTime);
+            let y = this.scalePoint(this.currentTime);
 
             for (let iter = 0; iter < this.numPoints; iter++) {
-                let { x: newX, y: newY } = this.applyChaosEquations(x, y, tempT);
+                let { x: newX, y: newY } = this.applyChaosEquations(x, y, this.currentTime);
                 x = newX;
                 y = newY;
 
@@ -77,7 +81,7 @@ class ChaosArt {
                 if (isNaN(x) || isNaN(y)) break;
             }
 
-            tempT += this.timestepAdjustment;
+            this.currentTime += this.timestepAdjustment;
             allPoints.push(...chaosPoints);
         }
         //console.log("Allpoints", allPoints.length);
@@ -88,6 +92,10 @@ class ChaosArt {
         this.updatePointsHistory(allPoints);
 
         //console.log("pointsHistory", this.pointsHistory.length);
+        // Reset at end
+        if (this.t > this.t_end) {
+            this.initChaosArt();
+        }
 
         return this.pointsHistory;
     }

@@ -61,6 +61,7 @@ const ChaosArtView = () => {
 
         const render = () => {
             const pointsData = chaosArt.current.computeNextPoints();
+            console.log("Time: ", chaosArt.current.currentTime);
             const points = new Float32Array(pointsData.flat());
 
             // Update points buffer with new data
