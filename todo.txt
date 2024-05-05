@@ -1,0 +1,5 @@
+1. Sijoittelu näytöllä
+2. Aika päivittyy nopeammin kun ei tapahdu niin paljon
+3. Värit
+4. zen mode
+5. monetisointi

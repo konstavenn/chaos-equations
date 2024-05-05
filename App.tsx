@@ -10,13 +10,14 @@ const App = () => {
 
   const togglePause = () => {
     setIsPaused(!isPaused);
+    console.log("PAAAUSE");
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Chaos Equation Visualizer</Text>
       <View style={styles.glViewContainer}>
-        <ChaosArtView />
+        <ChaosArtView isPaused={isPaused} />
       </View>
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.button} onPress={togglePause}>
