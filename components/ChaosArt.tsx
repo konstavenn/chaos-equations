@@ -2,6 +2,8 @@
 type Float32ArrayLike = number[];
 
 class ChaosArt {
+    static instance: ChaosArt;
+
     private params: Float32Array;
     private numPoints: number = 100; // number of points to generate lines from 
     private iterationsPerFrame: number = 200; // length of history for lines
@@ -22,14 +24,24 @@ class ChaosArt {
     public pointColors: Float32Array;
     public currentTime: number = this.t;
 
+    static getInstance() {
+        if (!ChaosArt.instance) {
+            ChaosArt.instance = new ChaosArt();
+        }
+        return ChaosArt.instance;
+    }
+
 
     constructor() {
+        if (ChaosArt.instance) {
+            throw new Error("Error: Instantiation failed: Use getInstance() instead of new.");
+        }
         this.params = new Float32Array(18);
         this.pointColors = new Float32Array(this.numPoints * this.maxAge);
         this.initChaosArt();
     }
 
-    private initChaosArt() {
+    public initChaosArt() {
         this.pointsHistory = [];
         this.t = -3.0;
         this.randParams();

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { GLView } from 'expo-gl';
 import { ExpoWebGLRenderingContext } from 'expo-gl';
-import ChaosArt from './ChaosArt';  // Ensure this path is correct
+import ChaosArt from './ChaosArt';  
 
 const ChaosArtView = () => {
-    const chaosArt = useRef(new ChaosArt());
+    const chaosArt = ChaosArt.getInstance();
+
 
     const onContextCreate = (gl: ExpoWebGLRenderingContext) => {
         const vertices = new Float32Array([
@@ -60,8 +61,8 @@ const ChaosArtView = () => {
         const positionAttributeLocation = gl.getAttribLocation(shaderProgram, 'position');
 
         const render = () => {
-            const pointsData = chaosArt.current.computeNextPoints();
-            console.log("Time: ", chaosArt.current.currentTime);
+            const pointsData = chaosArt.computeNextPoints();
+            console.log("Time: ", chaosArt.currentTime);
             const points = new Float32Array(pointsData.flat());
 
             // Update points buffer with new data
@@ -93,7 +94,7 @@ const ChaosArtView = () => {
     };
 
     return (
-        <GLView style={{ width: '100%', height: '70%' }} onContextCreate={onContextCreate} />
+        <GLView style={{ width: '100%', height: '80%' }} onContextCreate={onContextCreate} />
     );
 };
 
@@ -113,4 +114,8 @@ function loadShader(gl: ExpoWebGLRenderingContext, type: number, source: string)
         return null;
     }
     return shader;
+}
+
+export function nextChaosEquation() {
+
 }
