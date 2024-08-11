@@ -1,16 +1,27 @@
 // ChaosArt.ts
+
+// Type definitions for better type safety
 type Float32ArrayLike = number[];
 type EquationUpdateCallback = (equation: string) => void;
 
 class ChaosArt {
+    // Singleton instance
     static instance: ChaosArt;
+    
+    // Flag to control animation pause state
+    private isPaused: boolean = false;
 
+    // Parameters for the chaos equations
     public params: Float32Array;
+    
+    // Configuration for point generation and history
     private numPoints: number = 100; // number of points to generate lines from 
     private iterationsPerFrame: number = 200; // length of history for lines
     private pointsHistory: Array<[number, number]> = [];
     private maxAge: number = 200;
     private fadeStep: number = 1.0 / this.maxAge;
+    
+    // Time-related variables for animation control
     private t: number = -3.0;
     private t_end: number = 3.0;
     private t_increment_base: number = 0.003;
@@ -18,48 +29,60 @@ class ChaosArt {
     private t_increment_min: number = this.t_increment_base / 15;
     private rolling_delta: number = this.t_increment_base;
     private timestepAdjustment: number = this.rolling_delta / this.iterationsPerFrame;
+    
+    // Scaling factors for point coordinates
     private maxX: number = 1000000000;
     private maxY: number = 1000000000;
-    private current_min: number=0;
-    private current_max: number=0;
+    
+    // Variables to track the current range of points
+    private current_min: number = 0;
+    private current_max: number = 0;
 
-
+    // Array to store color information for points
     public pointColors: Float32Array;
+    
+    // Current time in the animation
     public currentTime: number = this.t;
+    
+    // Array to store equation update listeners
     private listeners: EquationUpdateCallback[] = [];
 
+    // Singleton getInstance method
     static getInstance() {
         if (!ChaosArt.instance) {
             ChaosArt.instance = new ChaosArt();   
         }
-        
         return ChaosArt.instance;
     }
 
-    // Method to register listeners
+    // Method to toggle pause state
+    public togglePause(): void {
+        this.isPaused = !this.isPaused;
+    }
+
+    // Method to register equation update listeners
     public registerListener(callback: EquationUpdateCallback): void {
         this.listeners.push(callback);
     }
 
-    // Method to remove a listener
+    // Method to remove equation update listeners
     public removeListener(callback: EquationUpdateCallback): void {
         this.listeners = this.listeners.filter(listener => listener !== callback);
     }
 
-    // Notify all registered listeners
+    // Method to notify all registered listeners with new equation
     private notifyListeners(equation: string): void {
         this.listeners.forEach(callback => callback(equation));
     }
 
-    constructor() {
-        if (ChaosArt.instance) {
-            throw new Error("Error: Instantiation failed: Use getInstance() instead of new.");
-        }
+    // Private constructor for singleton pattern
+    private constructor() {
         this.params = new Float32Array(18);
         this.pointColors = new Float32Array(this.numPoints * this.maxAge);
         this.initChaosArt();
     }
 
+    // Method to initialize or reset the chaos art
     public initChaosArt() {
         this.pointsHistory = [];
         this.t = -3.0;
@@ -68,12 +91,14 @@ class ChaosArt {
         this.updateEquationString()
     }
 
+    // Method to generate random parameters for chaos equations
     private randParams() {
         for (let i = 0; i < this.params.length; i++) {
             this.params[i] = Math.floor(Math.random() * 3) - 1;
         }
     }
 
+    // Method to generate random colors for points
     private randColors() {
         let baseColors = Array.from({ length: this.numPoints }, () => [
             Math.random(), Math.random(), Math.random(), 1.0
@@ -89,9 +114,14 @@ class ChaosArt {
         this.pointColors = new Float32Array(extendedColors);
     }
 
+    // Main method to compute next set of points for animation
     public computeNextPoints(): Array<[number, number]> {
         let allPoints: Array<[number, number]> = [];
         this.currentTime = this.t;
+
+        if (this.isPaused) {
+            return this.pointsHistory;
+        }
 
         for (let iteration = 0; iteration < this.iterationsPerFrame; iteration++) {
             let chaosPoints: Array<[number, number]> = [];
@@ -116,17 +146,14 @@ class ChaosArt {
             this.currentTime += this.timestepAdjustment;
             allPoints.push(...chaosPoints);
         }
-        //console.log("Allpoints", allPoints.length);
 
         this.updateMinMax(allPoints);
-
         this.adjustTime(allPoints.length);
         this.t += this.rolling_delta;
         this.timestepAdjustment = this.rolling_delta / this.iterationsPerFrame;
         this.updatePointsHistory(allPoints);
 
-        //console.log("pointsHistory", this.pointsHistory.length);
-        // Reset at end
+        // Reset at end of time range
         if (this.t > this.t_end) {
             this.initChaosArt();
         }
@@ -134,6 +161,7 @@ class ChaosArt {
         return this.pointsHistory;
     }
 
+    // Method to apply chaos equations to a point
     private applyChaosEquations(x: number, y: number, tempT: number) {
         let xx = x * x, yy = y * y, tt = tempT * tempT;
         let xy = x * y, xt = x * tempT, yt = y * tempT;
@@ -143,109 +171,96 @@ class ChaosArt {
         };
     }
 
+    // Method to check if a point is within the visible range
     private isPointInView(x: number, y: number): boolean {
         return x >= -1 && x <= 1 && y >= -1 && y <= 1;
     }
 
+    // Method to scale a point
     private scalePoint(val: number): number {
         return val / this.maxX;
     }
 
+    // Method to adjust time increment based on point activity
     private adjustTime(pointCount: number) {
-        // If all points centered around zero, it is low activity
+        // Adjust for low activity (points centered around zero)
         if (this.current_min > -0.05 || this.current_min < 0.05) {
-            //console.log("Low activity.");
-            
-            
             if (this.rolling_delta < this.t_increment_max) {
                 this.rolling_delta += (this.t_increment_max - this.rolling_delta) * 0.1;
             }
         }
-                
-        // Low activity: Increase rolling_delta towards t_increment_max
+        
+        // Adjust for low point count
         if (pointCount <= (this.iterationsPerFrame * 6) || pointCount === (this.numPoints * this.iterationsPerFrame * 2)) {
-            //console.log("Low activity.");
             if (this.rolling_delta < this.t_increment_max) {
                 this.rolling_delta += (this.t_increment_max - this.rolling_delta) * 0.1;
             }
-
-        // Medium activity: Move rolling_delta towards t_increment_base 
-        } else if (pointCount > (this.iterationsPerFrame * 6) && pointCount < (this.iterationsPerFrame * 24)) {
-            //console.log("Medium activity.");
+        } 
+        // Adjust for medium point count
+        else if (pointCount > (this.iterationsPerFrame * 6) && pointCount < (this.iterationsPerFrame * 24)) {
             if (this.rolling_delta > this.t_increment_base) {
                 this.rolling_delta -= (this.rolling_delta - this.t_increment_base) * 0.25; // Smoothly decrease
             }
             if (this.rolling_delta < this.t_increment_base) {
                 this.rolling_delta += (this.t_increment_base - this.rolling_delta) * 0.1; // Smoothly increase
             }
-
-        // High activity: Decrease rolling_delta towards t_increment_min
-        } else if (pointCount >= (this.iterationsPerFrame * 24) && pointCount < (this.numPoints * this.iterationsPerFrame * 24)) {
-            
-
-            
-            //console.log("High activity.");
+        } 
+        // Adjust for high point count
+        else if (pointCount >= (this.iterationsPerFrame * 24) && pointCount < (this.numPoints * this.iterationsPerFrame * 24)) {
             if (this.rolling_delta > this.t_increment_min) {
                 this.rolling_delta -= (this.rolling_delta - this.t_increment_min) * 0.25; // Smoothly decrease
             }
         }
     }
 
+    // Method to update the current min and max values of points
     private updateMinMax(allPoints: Array<[number, number]>) {
-        // Initialize to extreme values
         this.current_min = Infinity;
         this.current_max = -Infinity;
     
-        // Iterate through all points to find the min/max
         allPoints.forEach(point => {
             const [x, y] = point;
-            // Update current_min and current_max
             if (x < this.current_min) this.current_min = x;
             if (y < this.current_min) this.current_min = y;
             if (x > this.current_max) this.current_max = x;
             if (y > this.current_max) this.current_max = y;
         });
-    
-        // Optional: Log the updated values for debugging
-        //console.log(`Updated min: ${this.current_min}, max: ${this.current_max}`);
     }
-    
 
+    // Method to update the points history
     private updatePointsHistory(newPoints: Array<[number, number]> = []) {
         this.pointsHistory.unshift(...newPoints);
         if (this.pointsHistory.length > this.numPoints * this.maxAge) {
             this.pointsHistory.length = this.numPoints * this.maxAge;
         }
-        //console.log("InIn", this.pointsHistory.length, this.numPoints, this.maxAge);
     }
 
+    // Method to update and notify listeners of new equation string
     public updateEquationString() {
-        // Define the terms in the order they appear in the params array
         const terms = ['x²', 'y²', 't²', 'xy', 'xt', 'yt', 'x', 'y', 't'];
         
-        // Initialize parts of the equation as empty strings
         let xEquation = 'x\' = ';
         let yEquation = 'y\' = ';
     
-        // Iterate through the first half of the params for the x equation
+        // Generate x equation string
         terms.forEach((term, index) => {
             if (this.params[index] !== 0) {
-                // Append the term with its coefficient to the equation string
                 xEquation += (this.params[index] > 0 ? (index !== 0 ? ' + ' : '') : ' - ') + (Math.abs(this.params[index]) === 1 ? '' : Math.abs(this.params[index])) + term;
             }
         });
     
-        // Iterate through the second half of the params for the y equation
+        // Generate y equation string
         terms.forEach((term, index) => {
-            if (this.params[index + terms.length] !== 0) { // Adjust index for the y equation parameters
-                // Append the term with its coefficient to the equation string
+            if (this.params[index + terms.length] !== 0) {
                 yEquation += (this.params[index + terms.length] > 0 ? (index !== 0 ? ' + ' : '') : ' - ') + (Math.abs(this.params[index + terms.length]) === 1 ? '' : Math.abs(this.params[index + terms.length])) + term;
             }
         });
         
+        // Clean up equation strings
         yEquation = yEquation.startsWith("y' =  +") ? yEquation.replace("y' =  +", "y' =  ") : yEquation;
         xEquation = xEquation.startsWith("x' =  +") ? xEquation.replace("x' =  +", "x' =  ") : xEquation;
 
+        // Notify listeners of new equation
         this.notifyListeners(xEquation + '\n' + yEquation);
     }
 }

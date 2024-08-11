@@ -4,39 +4,53 @@ import ChaosArtView from './components/ChaosArtView';
 import ChaosArt from './components/ChaosArt';  
 
 const App = () => {
+  // State to control pause/play of the visualization
   const [isPaused, setIsPaused] = useState(false);
+  
+  // Get the singleton instance of ChaosArt
   const chaosArt = ChaosArt.getInstance();
+  
+  // State to hold the current time value of the chaos equation
   const [tValue, setTValue] = useState(`t = ${chaosArt.currentTime.toFixed(4)}`);
+  
+  // State to hold the current equation text
   const [equationText, setEquationText] = useState('');
 
-
+  // Effect to handle equation updates
   useEffect(() => {
-    const chaosArt = ChaosArt.getInstance();
+    // Handler function to update equation text
     const handleEquationUpdate = (updatedEquation: string) => {
       setEquationText(updatedEquation);
     };
 
+    // Register the handler with ChaosArt
     chaosArt.registerListener(handleEquationUpdate);
 
     // Initial update on component mount
     chaosArt.updateEquationString();
 
+    // Cleanup function to remove the listener when component unmounts
     return () => {
       chaosArt.removeListener(handleEquationUpdate);
     };
-  }, []);
+  }, []); // Empty dependency array means this effect runs once on mount
 
-
+  // Effect to update the time value periodically
   useEffect(() => {
     const interval = setInterval(() => {
-      setTValue(`t = ${chaosArt.currentTime.toFixed(4)}`);  // Update with "t = " prepended
-    }, 50); // Update every 100 milliseconds
+      if (!isPaused) {
+        setTValue(`t = ${chaosArt.currentTime.toFixed(4)}`);
+      }
+    }, 50); // Update every 50ms
 
-    return () => clearInterval(interval);  // Clean up the interval on component unmount
-  }, []);
+    // Cleanup function to clear the interval when component unmounts
+    return () => clearInterval(interval);
+  }, [isPaused]); // Re-run effect if isPaused changes
 
+  // Function to toggle pause state
   const togglePause = () => {
     setIsPaused(!isPaused);
+    chaosArt.togglePause(); // Toggle pause in ChaosArt instance
   };
 
   return (
@@ -61,6 +75,7 @@ const App = () => {
   );
 };
 
+// Styles for the component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -83,10 +98,10 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 0.2,
-    flexDirection: 'row',  // Change to row to align text boxes side by side
-    justifyContent: 'space-between',  // Adjust spacing to space-between to push to left and right
+    flexDirection: 'row',  // Align text boxes side by side
+    justifyContent: 'space-between',  // Push to left and right
     alignItems: 'center',  // Center align vertically
-    paddingHorizontal: 10,  // Add horizontal padding for overall spacing
+    paddingHorizontal: 10,  // Add horizontal padding
     marginBottom: 10,
   },  
   textBoxRight: {
