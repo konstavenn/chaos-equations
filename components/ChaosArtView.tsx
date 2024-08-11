@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React,  { useState, useEffect, useRef } from 'react';
 import { GLView } from 'expo-gl';
 import { ExpoWebGLRenderingContext } from 'expo-gl';
 import ChaosArt from './ChaosArt';  
@@ -10,8 +10,16 @@ interface ChaosArtViewProps {
 const ChaosArtView: React.FC<ChaosArtViewProps> = ({ isPaused }) => {
     const chaosArt = ChaosArt.getInstance();
 
+    useEffect(() => {
+        if (isPaused) {
+            console.log(`Button pressed: YES`);
+        } else {
+            console.log(`Button pressed: NOT`);
+        }
+    }, [isPaused]);
 
     const onContextCreate = (gl: ExpoWebGLRenderingContext) => {
+        
         const vertices = new Float32Array([
             -1, -1,  // Bottom left
              1, -1,  // Bottom right
@@ -65,40 +73,41 @@ const ChaosArtView: React.FC<ChaosArtViewProps> = ({ isPaused }) => {
         const positionAttributeLocation = gl.getAttribLocation(shaderProgram, 'position');
 
         const render = () => {
-                const pointsData = chaosArt.computeNextPoints();
-                console.log("Time: ", chaosArt.currentTime);
-                const points = new Float32Array(pointsData.flat());
+            console.log(isPaused);
+            const pointsData = chaosArt.computeNextPoints();
+            //console.log("Time: ", chaosArt.currentTime);
+            const points = new Float32Array(pointsData.flat());
 
-                // Update points buffer with new data
-                gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, points, gl.DYNAMIC_DRAW);
+            // Update points buffer with new data
+            gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, points, gl.DYNAMIC_DRAW);
 
-                // Set viewport and clear the canvas
-                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-                gl.clearColor(0, 0, 0, 1);  // Clear to black
-                gl.clear(gl.COLOR_BUFFER_BIT);
+            // Set viewport and clear the canvas
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+            gl.clearColor(0, 0, 0, 1);  // Clear to black
+            gl.clear(gl.COLOR_BUFFER_BIT);
 
-                // Draw square
-                gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-                gl.enableVertexAttribArray(positionAttributeLocation);
-                gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-                gl.drawArrays(gl.LINE_STRIP, 0, 5);
+            // Draw square
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.LINE_STRIP, 0, 5);
 
-                // Draw points
-                gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
-                gl.enableVertexAttribArray(positionAttributeLocation);
-                gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-                gl.drawArrays(gl.POINTS, 0, pointsData.length / 2);
+            // Draw points
+            gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.POINTS, 0, pointsData.length / 2);
 
-                gl.endFrameEXP();
-                requestAnimationFrame(render);
+            gl.endFrameEXP();
+            requestAnimationFrame(render);
         };
 
-        requestAnimationFrame(render);
+        requestAnimationFrame(render); 
     };
 
     return (
-        <GLView style={{ width: '100%', height: '80%' }} onContextCreate={onContextCreate} />
+        <GLView style={{ width: '100%', height: '100%' }} onContextCreate={onContextCreate} />
     );
 };
 

@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import ChaosArtView from './components/ChaosArtView';
-import { nextChaosEquation } from './components/ChaosArtView';
 import ChaosArt from './components/ChaosArt';  
 
 const App = () => {
   const [isPaused, setIsPaused] = useState(false);
   const chaosArt = ChaosArt.getInstance();
+  const [tValue, setTValue] = useState(`t = ${chaosArt.currentTime.toFixed(4)}`);
+  const [equationText, setEquationText] = useState('');
+
+
+  useEffect(() => {
+    const chaosArt = ChaosArt.getInstance();
+    const handleEquationUpdate = (updatedEquation: string) => {
+      setEquationText(updatedEquation);
+    };
+
+    chaosArt.registerListener(handleEquationUpdate);
+
+    // Initial update on component mount
+    chaosArt.updateEquationString();
+
+    return () => {
+      chaosArt.removeListener(handleEquationUpdate);
+    };
+  }, []);
+
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTValue(`t = ${chaosArt.currentTime.toFixed(4)}`);  // Update with "t = " prepended
+    }, 50); // Update every 100 milliseconds
+
+    return () => clearInterval(interval);  // Clean up the interval on component unmount
+  }, []);
 
   const togglePause = () => {
     setIsPaused(!isPaused);
-    console.log("PAAAUSE");
   };
 
   return (
@@ -18,6 +44,10 @@ const App = () => {
       <Text style={styles.title}>Chaos Equation Visualizer</Text>
       <View style={styles.glViewContainer}>
         <ChaosArtView isPaused={isPaused} />
+      </View>
+      <View style={styles.textContainer}>
+        <Text style={styles.textBoxLeft}>{equationText}</Text>
+        <Text style={styles.textBoxRight}>{tValue}</Text>
       </View>
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.button} onPress={togglePause}>
@@ -42,21 +72,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     marginTop: 20,
-    marginBottom: 20, // Reduced to minimize space below the title
+    marginBottom: 20,
   },
   glViewContainer: {
-    flex: 0.7, // Adjusted for better space utilization
+    flex: 0.7,
     width: '100%',
-    //paddingHorizontal: 10, // Padding horizontal for some side space if needed
-    paddingTop: 0, // Reduced or removed padding top
+    paddingTop: 0,
     marginTop: 0,
-    alignItems: 'center', // Ensures children are centered horizontally
+    alignItems: 'center',
   },
+  textContainer: {
+    flex: 0.2,
+    flexDirection: 'row',  // Change to row to align text boxes side by side
+    justifyContent: 'space-between',  // Adjust spacing to space-between to push to left and right
+    alignItems: 'center',  // Center align vertically
+    paddingHorizontal: 10,  // Add horizontal padding for overall spacing
+    marginBottom: 10,
+  },  
+  textBoxRight: {
+    color: '#fff',
+    fontSize: 12,
+    flex: 1,
+    textAlign: 'right',  // Align text right for the tValue
+  },
+  textBoxLeft: {
+    color: '#fff',
+    fontSize: 12,
+    flex: 2,
+    textAlign: 'left',  // Align text left for the equationText
+  },  
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 10, // Padding vertical to bring buttons closer to the GL view
-    marginBottom: 0, // Ensure there's some space at the bottom
+    paddingVertical: 10,
+    marginBottom: 0,
   },
   button: {
     width: 100,
@@ -74,4 +123,3 @@ const styles = StyleSheet.create({
 });
 
 export default App;
-

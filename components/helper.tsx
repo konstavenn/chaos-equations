@@ -1,26 +1,56 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GLView } from 'expo-gl';
-import { ExpoWebGLRenderingContext, GLViewProps } from 'expo-gl';
-import { StyleSheet } from 'react-native';
-import ChaosArt from './ChaosArt'; // Ensure this path is correct
-import { vsSourceChaos, fsSourceChaos } from './canvas_constants';
+import { ExpoWebGLRenderingContext } from 'expo-gl';
+import ChaosArt from './ChaosArt';  
+
+interface ChaosArtViewProps {
+    isPaused: boolean;
+}
+
+const ChaosArtView: React.FC<ChaosArtViewProps> = ({ isPaused }) => {
+    const chaosArt = ChaosArt.getInstance();
 
 
-const ChaosArtView = () => {
-    const ref = useRef<GLView>(null);
-    const chaosArt = new ChaosArt();
+    const onContextCreate = (gl: ExpoWebGLRenderingContext) => {
+        const vertices = new Float32Array([
+            -1, -1,  // Bottom left
+             1, -1,  // Bottom right
+             1,  1,  // Top right
+            -1,  1,  // Top left
+            -1, -1   // Close the loop to bottom left
+        ]);
+        
+        // Square buffer setup
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    const initGL = async (gl: ExpoWebGLRenderingContext) => {
-        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        // Points buffer setup
+        const pointsBuffer = gl.createBuffer();
 
-        // Shader creation and linking
-        const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSourceChaos);
-        const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSourceChaos);
+        // Shaders
+        const vsSource = `
+            attribute vec2 position;
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+                gl_PointSize = 5.0; // Point size
+            }
+        `;
+
+        const fsSource = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Points color (red)
+            }
+        `;
+
+        // Load and compile shaders
+        const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
         if (!vertexShader || !fragmentShader) {
             console.error('Shader loading failed.');
             return; // Exit if shaders fail to load
         }
-
         const shaderProgram = gl.createProgram();
         if (!shaderProgram) {
             console.error('Failed to create shader program.');
@@ -30,70 +60,47 @@ const ChaosArtView = () => {
         gl.attachShader(shaderProgram, vertexShader);
         gl.attachShader(shaderProgram, fragmentShader);
         gl.linkProgram(shaderProgram);
-        
-        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-            console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-            return; // Exit if linking fails
-        }
+        gl.useProgram(shaderProgram);
 
-        // Buffer initialization
-        const positionBuffer = gl.createBuffer();
-        const colorBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([]), gl.DYNAMIC_DRAW);
-        if (!positionBuffer || !colorBuffer) {
-            console.error('Failed to create buffers.');
-            return; // Exit if buffer creation fails
-        }
+        const positionAttributeLocation = gl.getAttribLocation(shaderProgram, 'position');
 
-        const animate = () => {
-            if (gl) {
-                drawChaosArt(gl, shaderProgram, positionBuffer, colorBuffer);
+        const render = () => {
+            if (!isPaused) {
+                const pointsData = chaosArt.computeNextPoints();
+                console.log("Time: ", chaosArt.currentTime);
+                const points = new Float32Array(pointsData.flat());
+
+                // Update points buffer with new data
+                gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, points, gl.DYNAMIC_DRAW);
+
+                // Set viewport and clear the canvas
+                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+                gl.clearColor(0, 0, 0, 1);  // Clear to black
+                gl.clear(gl.COLOR_BUFFER_BIT);
+
+                // Draw square
+                gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+                gl.enableVertexAttribArray(positionAttributeLocation);
+                gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.LINE_STRIP, 0, 5);
+
+                // Draw points
+                gl.bindBuffer(gl.ARRAY_BUFFER, pointsBuffer);
+                gl.enableVertexAttribArray(positionAttributeLocation);
+                gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.POINTS, 0, pointsData.length / 2);
+
                 gl.endFrameEXP();
-                requestAnimationFrame(animate);
+                requestAnimationFrame(render);
             }
         };
 
-        // Start the animation loop
-        requestAnimationFrame(animate);
-    };
-
-    const drawChaosArt = (gl: ExpoWebGLRenderingContext, program: WebGLProgram, positionBuffer: WebGLBuffer, colorBuffer: WebGLBuffer) => {
-        // Compute chaos points and colors (logic needs to be adapted from existing chaos functions)
-        // Assume chaosArt is an instance of the ChaosArt class
-        const pointsData = chaosArt.computeNextPoints();
-        //console.log(pointsData.length);
-
-
-        const points = new Float32Array(pointsData.flat());
-        const colors = new Float32Array(chaosArt.pointColors);  // Assuming pointColors is accessible and formatted appropriately
-
-        // Then use these in your buffer data setup in drawChaosArt function
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, points, gl.DYNAMIC_DRAW);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW);
-
-
-        // Drawing commands here
-        gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        
-        gl.useProgram(program);
-        gl.enableVertexAttribArray(0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-        
-        gl.enableVertexAttribArray(1);
-        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-        gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
-        
-        gl.drawArrays(gl.POINTS, 0, points.length / 2);
+        requestAnimationFrame(render);
     };
 
     return (
-<GLView style={{ width: '100%', height: '70%' }} onContextCreate={onContextCreate} />
+        <GLView style={{ width: '100%', height: '80%' }} onContextCreate={onContextCreate} />
     );
 };
 
@@ -115,38 +122,6 @@ function loadShader(gl: ExpoWebGLRenderingContext, type: number, source: string)
     return shader;
 }
 
+export function nextChaosEquation() {
 
-// Vertex shader program
-const vsSourceChaos = `
-    // Vertex shader
-/*
-    attribute vec4 aVertexPosition;
-
-    void main() {
-        gl_Position = aVertexPosition;
-        gl_PointSize = 3.0; // Make this large enough to be visible
-    }
-*/
-    attribute vec4 aVertexPosition;
-    attribute vec4 aVertexColor;
-    varying lowp vec4 colour;
-
-    void main() {
-        gl_Position = aVertexPosition;
-        gl_PointSize = 1.0; // Adjust size of the point here
-        colour = aVertexColor;
-    }
-`;
-
-
-// Fragment shader program
-const fsSourceChaos = `
-    // Fragment shader
-    precision mediump float;
-    //uniform vec4 colour;
-    varying lowp vec4 colour;
-
-    void main() {
-        gl_FragColor = colour;
-    }
-`;
+}

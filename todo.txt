@@ -1,3 +1,7 @@
+0. nopeuden säätö paremmaks
+x. kaavojen customointi
+0. play pause
+0.1 show t and equation
 1. Sijoittelu näytöllä
 2. Aika päivittyy nopeammin kun ei tapahdu niin paljon
 3. Värit
