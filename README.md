@@ -1,6 +1,6 @@
 # Chaos Equation Visualizer
 
-![Chaos Equation Visualizer Screenshot](chaos.jpeg)
+![Chaos Equation Visualizer Screenshot](chaos.gif)
 
 ## Description
 
